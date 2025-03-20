@@ -13,6 +13,7 @@
     "Express",
     "Cloud Integration"
   ],
+  "stack": "heroku-22",
   "env": {
     "API_KEY": {
       "description": "Heroku API Key for Salesforce Authentication",
