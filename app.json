@@ -1,6 +1,6 @@
 {
   "name": "glink-heroku1",
-  "description": "A description of your app",
+  "description": "This will allow migrating Salesforce Files into Google Drive.",
   "repository": "https://github.com/neilontechnologies/g-link-heroku",
   "logo": "https://www.neilontechnologies.com/public/frontend/images/Neilon.PNG", 
   "keywords": [
