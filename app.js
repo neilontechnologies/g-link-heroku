@@ -28,7 +28,7 @@ app.use((req, res, next) => {
   }
 });
 
-// This service is used to upload salesforce files and attachments into Google Drive
+// This service is used to upload salesforce files and attachments into the Google Drive
 app.post('/uploadsalesforcefile', async (req, res) => {
   try{
     // Get all headers from apex
