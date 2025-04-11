@@ -503,7 +503,7 @@ const createFileMigrationLog = (accessToken, instanceUrl, sfFileId, sfContentDoc
     xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
     xhr.setRequestHeader('Content-Type', 'application/json');
 
-    // Create bodyy
+    // Create body
     const body = {}
 
     // Check file type is attachment or content document link
