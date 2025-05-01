@@ -54,7 +54,8 @@ app.post('/uploadsalesforcefile', async (req, res) => {
       google_drive_file_meta_data,
       google_drive_refresh_token,
       google_drive_folder_id,
-	  sf_instance_url
+	  sf_instance_url,
+      sf_token
   } = req.body;
 
   // We are sending the request immediately because we cannot wait untill the whole migration is completed. It will timeout the API request in Apex.
@@ -62,27 +63,33 @@ app.post('/uploadsalesforcefile', async (req, res) => {
 
   // Get salesforce response
   const migrateSalesforceResult = migrateSalesforce(sf_file_id, google_drive_client_id, google_drive_secret_id, google_drive_refresh_token, sf_client_id, sf_client_secret, sf_username, sf_password, google_drive_bucket_name, google_drive_folder_key, google_drive_file_title, sf_file_size, 
-    sf_content_document_id, sf_parent_id, sf_content_document_link_id, sf_namespace, sf_delete_file, sf_create_log, g_file, google_drive_file_meta_data, google_drive_folder_id, sf_instance_url);
+    sf_content_document_id, sf_parent_id, sf_content_document_link_id, sf_namespace, sf_delete_file, sf_create_log, g_file, google_drive_file_meta_data, google_drive_folder_id, sf_instance_url, sf_token);
   } catch(error){
     console.log(error);
   }
 });
 
 // This methiod is used to handle all combine methods
-const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecretKey, googleDriveRefreshToken, sfClientId, sfClientSecret, sfUsername, sfPassword, googleDriveBucketName, googleDriveFolderKey, googleDriveFileTitle, sfFileSize, sfContentDocumentId, sfParentId, sfContentDocumentLinkId, sfNamespace, sfDeleteFile, sfCreateLog, gFile, googleDriveFileMetadata, googleDriveFolderId, sfInstanceUrl) =>{
+const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecretKey, googleDriveRefreshToken, sfClientId, sfClientSecret, sfUsername, sfPassword, googleDriveBucketName, googleDriveFolderKey, googleDriveFileTitle, sfFileSize, sfContentDocumentId, sfParentId, sfContentDocumentLinkId, sfNamespace, sfDeleteFile, sfCreateLog, gFile, googleDriveFileMetadata, googleDriveFolderId, sfInstanceUrl, sfToken) =>{
   let salesforceAccessToken;
   let instanceUrl;
   
   // Get access token of salesforce
   const salesforceTokenResponse = await getSalesforceToken(sfClientId, sfClientSecret, sfUsername, sfPassword, sfInstanceUrl);
 
-  // Check if access token and instance URL are available or not
-  if(!salesforceTokenResponse.accessToken || !salesforceTokenResponse.instanceUrl){
-    return;
-  } else {
-    salesforceAccessToken = salesforceTokenResponse.accessToken;
-    instanceUrl = salesforceTokenResponse.instanceUrl
+  if(sfToken == null){
+    // Check if access token and instance URL are available or not
+    if(!salesforceTokenResponse.accessToken || !salesforceTokenResponse.instanceUrl){
+      return;
+    } else {
+      salesforceAccessToken = salesforceTokenResponse.accessToken;
+      instanceUrl = salesforceTokenResponse.instanceUrl
+    }
+  } else{
+    salesforceAccessToken = sfToken;
+    instanceUrl = sfInstanceUrl;
   }
+
 
   // Get access token authetication with google drive
   const googleDriveAccessToken = await createOAuthClient(googleDriveAccessKey, googleDriveSecretKey, googleDriveRefreshToken);
@@ -114,7 +121,7 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
           const createGFilesInSalesforceResult = await createGFilesInSalesforce(salesforceAccessToken, instanceUrl, googleDriveBucketName, googleDriveFilePath, sfFileSize, sfContentDocumentId, sfFileId, sfContentDocumentLinkId, sfNamespace, sfDeleteFile, sfCreateLog, gFile, googleDriveFileId);
         }
       }
-    }else if (googleDriveFolderId != null) {
+    } else if (googleDriveFolderId != null) {
       // Prepare google drive folder path
       const googleDriveFolderPath = googleDriveBucketName + '/' + googleDriveFolderKey;
 
@@ -660,11 +667,12 @@ app.get('/', async (req, res) => {
     const googleDriveRefreshToken = '{GOOGLE_DRIVE_REFRESH_TOKEN}';
     const googleDriveFolderId = '{GOOGLE_DRIVE_FOLDER_ID}';
 	const sfInstanceUrl = '{SALESFORCE_INSTANCE_URL}'
+    const sfToken = '{SALESFORCE_TOKEN}'
 
     // We are sending the request immediately because we cannot wait untill the whole migration is completed. It will timeout the API request in Apex.
     res.send(`Heroku service to migrate Salesforce File has been started successfully.`);
     
-    const reponse = await migrateSalesforce (sfFileId, googleDriveClientId, googleDriveClientSecretId, googleDriveRefreshToken, sfClientId, sfClientSecret, sfUsername, sfPassword, googleDriveBucketName, googleDriveFolderKey, googleDriveFileTitle, sfFileSize, sfContentDocumentId, sfParentId, sfContentDocumentLinkId, sfNamespace, sfDeleteFile, sfCreateLog, gFile, googleDriveFileMetadata, googleDriveFolderId, sfInstanceUrl);
+    const reponse = await migrateSalesforce (sfFileId, googleDriveClientId, googleDriveClientSecretId, googleDriveRefreshToken, sfClientId, sfClientSecret, sfUsername, sfPassword, googleDriveBucketName, googleDriveFolderKey, googleDriveFileTitle, sfFileSize, sfContentDocumentId, sfParentId, sfContentDocumentLinkId, sfNamespace, sfDeleteFile, sfCreateLog, gFile, googleDriveFileMetadata, googleDriveFolderId, sfInstanceUrl, sfToken);
   } catch (error) {
     console.error(error);
   }
