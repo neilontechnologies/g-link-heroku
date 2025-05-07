@@ -73,11 +73,12 @@ app.post('/uploadsalesforcefile', async (req, res) => {
 const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecretKey, googleDriveRefreshToken, sfClientId, sfClientSecret, sfUsername, sfPassword, googleDriveBucketName, googleDriveFolderKey, googleDriveFileTitle, sfFileSize, sfContentDocumentId, sfParentId, sfContentDocumentLinkId, sfNamespace, sfDeleteFile, sfCreateLog, gFile, googleDriveFileMetadata, googleDriveFolderId, sfInstanceUrl, sfToken) =>{
   let salesforceAccessToken;
   let instanceUrl;
-  
-  // Get access token of salesforce
-  const salesforceTokenResponse = await getSalesforceToken(sfClientId, sfClientSecret, sfUsername, sfPassword, sfInstanceUrl);
 
+  // Check token
   if(sfToken == null){
+    // Get access token of salesforce
+    const salesforceTokenResponse = await getSalesforceToken(sfClientId, sfClientSecret, sfUsername, sfPassword, sfInstanceUrl);
+
     // Check if access token and instance URL are available or not
     if(!salesforceTokenResponse.accessToken || !salesforceTokenResponse.instanceUrl){
       return;
