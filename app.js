@@ -184,7 +184,6 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
 
           // Create google drive folder busing google drive folder path
           const {createGoogleDriveFolderResult} = await createGoogleDriveFolder(salesforceAccessToken, instanceUrl, googleDriveFolderPath, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog);
-          // TODO createGoogleDriveFolderResult
 
           //  Check response
           if(createGoogleDriveFolderResult != null && createGoogleDriveFolderResult.code == 200 && createGoogleDriveFolderResult.data != null){
@@ -289,12 +288,16 @@ const getSalesforceFile = async (accessToken, instanceUrl, sfFileId, sfContentDo
     // Returns the response status code
     if(!response.ok){
       throw new Error(`We are not able to fetch the Salesforce File Content. ERROR: ${response.statusText}`);
+    } else{
+      const blob = await response.blob();
+      if(blob.size > 0){
+        const arrayBuffer = await blob.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        return buffer;
+      } else{
+        throw new Error('Salesforce File body is empty.');
+      }
     }
-
-    const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    return buffer;
   } catch(error){
     // Create File Migration Logs
     if(sfCreateLog){
