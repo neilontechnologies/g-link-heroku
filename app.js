@@ -279,7 +279,7 @@ const getSalesforceFile = async (accessToken, instanceUrl, sfFileId, sfContentDo
   
   // To authenticate salesforce
   try {
-    const response = await fetch(url, {
+    var response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
@@ -289,10 +289,10 @@ const getSalesforceFile = async (accessToken, instanceUrl, sfFileId, sfContentDo
     if(!response.ok){
       throw new Error(`We are not able to fetch the Salesforce File Content. ERROR: ${response.statusText}`);
     } else{
-      const blob = await response.blob();
+      var blob = await response.blob();
 	  response = null;
       if(blob.size > 0){
-        const arrayBuffer = await blob.arrayBuffer();
+        var arrayBuffer = await blob.arrayBuffer();
 		blob = null;
         const buffer = Buffer.from(arrayBuffer);
 		arrayBuffer = null;
