@@ -290,9 +290,12 @@ const getSalesforceFile = async (accessToken, instanceUrl, sfFileId, sfContentDo
       throw new Error(`We are not able to fetch the Salesforce File Content. ERROR: ${response.statusText}`);
     } else{
       const blob = await response.blob();
+	  response = null;
       if(blob.size > 0){
         const arrayBuffer = await blob.arrayBuffer();
+		blob = null;
         const buffer = Buffer.from(arrayBuffer);
+		arrayBuffer = null;
         return buffer;
       } else{
         throw new Error('Salesforce File body is empty.');
