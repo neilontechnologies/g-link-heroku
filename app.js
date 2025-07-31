@@ -279,7 +279,7 @@ const getSalesforceFile = async (accessToken, instanceUrl, sfFileId, sfContentDo
   
   // To authenticate salesforce
   try {
-    var response = await fetch(url, {
+    const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${accessToken}`
       }
@@ -289,17 +289,17 @@ const getSalesforceFile = async (accessToken, instanceUrl, sfFileId, sfContentDo
     if(!response.ok){
       throw new Error(`We are not able to fetch the Salesforce File Content. ERROR: ${response.statusText}`);
     } else{
-      var blob = await response.blob();
-	  response = null;
-      if(blob.size > 0){
-        var arrayBuffer = await blob.arrayBuffer();
-		blob = null;
-        const buffer = Buffer.from(arrayBuffer);
-		arrayBuffer = null;
-        return buffer;
-      } else{
-        throw new Error('Salesforce File body is empty.');
-      }
+	  const chunks = [];
+	  for await (const chunk of response.body) {
+	    chunks.push(chunk);
+	  }
+	  
+	  if(chunks.length > 0){
+	    const buffer = Buffer.concat(chunks);
+	    return buffer;
+	  } else{
+		throw new Error('Salesforce File body is empty.');
+	  }
     }
   } catch(error){
     // Create File Migration Logs
