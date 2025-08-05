@@ -277,9 +277,6 @@ const getSalesforceFile = async (accessToken, instanceUrl, sfFileId, sfContentDo
     url = `${instanceUrl}/services/data/v58.0/sobjects/ContentVersion/${sfFileId}/VersionData`;
   }
   
-  // File buffer
-  let buffer;
-  
   // To authenticate salesforce
   try {
     const response = await fetch(url, {
@@ -298,7 +295,7 @@ const getSalesforceFile = async (accessToken, instanceUrl, sfFileId, sfContentDo
 	  }
 	  
 	  if(chunks.length > 0){
-	    buffer = Buffer.concat(chunks);
+	    const buffer = Buffer.concat(chunks);
 	    return buffer;
 	  } else{
 		throw new Error('Salesforce File body is empty.');
@@ -311,9 +308,6 @@ const getSalesforceFile = async (accessToken, instanceUrl, sfFileId, sfContentDo
       console.error(error);
       throw error;
     }
-  } finally {
-      buffer = null;
-      global.gc && global.gc();
   }
 };
 
