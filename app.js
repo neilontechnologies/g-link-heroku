@@ -1,3 +1,4 @@
+
 const express = require('express');
 const cors = require('cors');
 const app = express();
@@ -14,12 +15,15 @@ app.use(cors());
 const bodyParser = require('body-parser');
 app.use(bodyParser.json())
 
+const crypto = require('crypto');
+
 const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 
 // Use to authenticate heroku access key
 app.use((req, res, next) => {
   const apiKey = process.env.API_KEY;
-  const { heroku_api_key } = req.body;
+  const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
+  const { heroku_api_key } = decryptedPayload;
 
   if(heroku_api_key === apiKey){
     next(); 
@@ -31,6 +35,9 @@ app.use((req, res, next) => {
 // This service is used to upload salesforce files and attachments into Google Drive
 app.post('/uploadsalesforcefile', async (req, res) => {
   try{
+    const apiKey = process.env.API_KEY;
+    const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
+
     // Get all headers from apex
     const {
       google_drive_client_id,
@@ -56,7 +63,7 @@ app.post('/uploadsalesforcefile', async (req, res) => {
       google_drive_folder_id,
 	  sf_instance_url,
       sf_token
-  } = req.body;
+  } = decryptedPayload;
 
   // We are sending the request immediately because we cannot wait untill the whole migration is completed. It will timeout the API request in Apex.
   res.send(`Heroku service to migrate Salesforce File has been started successfully.`);
@@ -648,8 +655,28 @@ async function uploadFileToGoogleDrive(authClient, buffer, googleDriveFolderId, 
   });
 }
 
+// This function will be used to decrypt the payload
+function decryptAES256(encryptedBase64, keyString) {
+  // Convert the key and encrypted text to buffers
+  const key = Buffer.from(keyString, 'utf8'); // 32 bytes for AES256
+  const encryptedData = Buffer.from(encryptedBase64, 'base64');
+
+  // Salesforce prepends IV (16 bytes) to the ciphertext
+  const iv = encryptedData.subarray(0, 16);
+  const ciphertext = encryptedData.subarray(16);
+
+  // Create decipher
+  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+  let decrypted = decipher.update(ciphertext);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+  // Convert back to string
+  return decrypted.toString('utf8');
+}
+
 // This service is used to upload salesforce files and attachments into Google Drive from local host
 app.get('/', async (req, res) => {
+  // Example usage
   try {
     // Replace these values with your own Salesforce Connected App credentials
     const sfFileId = '{SALESFORCE_CONTENT_VERSION_ID}'; 
