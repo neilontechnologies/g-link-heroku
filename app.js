@@ -23,6 +23,7 @@ const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 app.use((req, res, next) => {
 	console.log('HIII');
   const apiKey = process.env.API_KEY;
+	console.log(req);
   const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
 	console.log('HIII1');
   const salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
