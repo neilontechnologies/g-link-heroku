@@ -21,7 +21,6 @@ const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 
 // Use to authenticate heroku access key
 app.use((req, res, next) => {
-	console.log('HII123');
   const apiKey = process.env.API_KEY;
   const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
   const salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
@@ -41,7 +40,6 @@ app.use((req, res, next) => {
 // This service is used to upload salesforce files and attachments into Google Drive
 app.post('/uploadsalesforcefile', async (req, res) => {
   try{
-	  console.log('HII');
     const apiKey = process.env.API_KEY;
     const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
 	const salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
