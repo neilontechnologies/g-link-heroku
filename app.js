@@ -666,6 +666,8 @@ async function uploadFileToGoogleDrive(authClient, buffer, googleDriveFolderId, 
 
 // This function will be used to decrypt the payload
 function decryptAES256(encryptedBase64, keyString) {
+	console.log(keyString);
+	console.log(encryptedBase64);
 	console.log('HII671');
   // Convert the key and encrypted text to buffers
   const key = Buffer.from(keyString, 'utf8'); // 32 bytes for AES256
