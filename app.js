@@ -24,7 +24,9 @@ app.use((req, res, next) => {
 	console.log('HIII');
   const apiKey = process.env.API_KEY;
   const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
+	console.log('HIII1');
   const salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
+	console.log('HIII2');
   const { heroku_api_key } = salesforceAuthenticationInfo;
 
 	console.log(apiKey);
