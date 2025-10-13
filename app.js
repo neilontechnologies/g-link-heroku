@@ -23,7 +23,8 @@ const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 app.use((req, res, next) => {
   const apiKey = process.env.API_KEY;
   const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
-  const { heroku_api_key } = decryptedPayload;
+  const salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
+  const { heroku_api_key } = salesforceAuthenticationInfo;
 
   if(heroku_api_key === apiKey){
     next(); 
@@ -37,7 +38,8 @@ app.post('/uploadsalesforcefile', async (req, res) => {
   try{
     const apiKey = process.env.API_KEY;
     const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
-
+	const salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
+	
     // Get all headers from apex
     const {
       google_drive_client_id,
@@ -63,7 +65,7 @@ app.post('/uploadsalesforcefile', async (req, res) => {
       google_drive_folder_id,
 	  sf_instance_url,
       sf_token
-  } = decryptedPayload;
+  } = salesforceAuthenticationInfo;
 
   // We are sending the request immediately because we cannot wait untill the whole migration is completed. It will timeout the API request in Apex.
   res.send(`Heroku service to migrate Salesforce File has been started successfully.`);
