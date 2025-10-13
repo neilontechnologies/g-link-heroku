@@ -26,7 +26,11 @@ app.use((req, res, next) => {
   const salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
   const { heroku_api_key } = salesforceAuthenticationInfo;
 
+	console.log(apiKey);
+	console.log(salesforceAuthenticationInfo);
+	console.log(heroku_api_key);
   if(heroku_api_key === apiKey){
+	  console.log('NEXT');
     next(); 
   } else{
     res.status(403).send('Forbidden: Invalid Heroku API Key');
