@@ -11,6 +11,7 @@ const SCOPE = ['https://www.googleapis.com/auth/drive'];
 
 app.use(express.urlencoded({extended:true}));
 app.use(express.json());
+app.use(express.text());
 app.use(cors());
 const bodyParser = require('body-parser');
 app.use(bodyParser.json())
