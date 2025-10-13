@@ -22,20 +22,12 @@ const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 
 // Use to authenticate heroku access key
 app.use((req, res, next) => {
-	console.log('HIII');
   const apiKey = process.env.API_KEY;
-	console.log(req);
   const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
-	console.log('HIII1');
   const salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
-	console.log('HIII2');
   const { heroku_api_key } = salesforceAuthenticationInfo;
 
-	console.log(apiKey);
-	console.log(salesforceAuthenticationInfo);
-	console.log(heroku_api_key);
   if(heroku_api_key === apiKey){
-	  console.log('NEXT');
     next(); 
   } else{
     res.status(403).send('Forbidden: Invalid Heroku API Key');
@@ -668,9 +660,6 @@ async function uploadFileToGoogleDrive(authClient, buffer, googleDriveFolderId, 
 
 // This function will be used to decrypt the payload
 function decryptAES256(encryptedBase64, keyString) {
-	console.log(keyString);
-	console.log(encryptedBase64);
-	console.log('HII671');
   // Convert the key and encrypted text to buffers
   const key = Buffer.from(keyString, 'utf8'); // 32 bytes for AES256
   const encryptedData = Buffer.from(encryptedBase64, 'base64');
