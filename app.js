@@ -22,6 +22,7 @@ const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 
 // Use to authenticate heroku access key
 app.use((req, res, next) => {
+  console.log('HIIII');
   const contentType = req.headers['content-type'];
   console.log(contentType);
   let salesforceAuthenticationInfo;
