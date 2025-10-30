@@ -22,9 +22,15 @@ const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 
 // Use to authenticate heroku access key
 app.use((req, res, next) => {
+  const contentType = req.headers['content-type'];
+  const salesforceAuthenticationInfo;
   const apiKey = process.env.API_KEY;
-  const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
-  const salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
+  if(contentType == 'text/plain'){
+    const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
+    salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
+  } else{
+	salesforceAuthenticationInfo = req.body;
+  }
   const { heroku_api_key } = salesforceAuthenticationInfo;
 
   if(heroku_api_key === apiKey){
@@ -37,42 +43,48 @@ app.use((req, res, next) => {
 // This service is used to upload salesforce files and attachments into Google Drive
 app.post('/uploadsalesforcefile', async (req, res) => {
   try{
-    const apiKey = process.env.API_KEY;
-    const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
-	const salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
+    const contentType = req.headers['content-type'];
+    const salesforceAuthenticationInfo;
+    if(contentType == 'text/plain'){
+	  const apiKey = process.env.API_KEY;
+      const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
+      salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
+    } else{
+	  salesforceAuthenticationInfo = req.body;
+    }
 	
     // Get all headers from apex
-    const {
-      google_drive_client_id,
-      google_drive_secret_id,
-      sf_client_id,
-      sf_client_secret,
-      sf_username,
-      sf_password,
-      google_drive_file_title,
-      sf_parent_id,
-      google_drive_folder_key,
-      google_drive_bucket_name,
-      sf_content_document_id,
-      sf_file_size,
-      sf_file_id,
-      sf_content_document_link_id,
-      sf_namespace,
-      sf_delete_file,
-      sf_create_log,
-      g_file,
-      google_drive_file_meta_data,
-      google_drive_refresh_token,
-      google_drive_folder_id,
+	const {
+	  google_drive_client_id,
+	  google_drive_secret_id,
+	  sf_client_id,
+	  sf_client_secret,
+	  sf_username,
+	  sf_password,
+	  google_drive_file_title,
+	  sf_parent_id,
+	  google_drive_folder_key,
+	  google_drive_bucket_name,
+	  sf_content_document_id,
+	  sf_file_size,
+	  sf_file_id,
+	  sf_content_document_link_id,
+	  sf_namespace,
+	  sf_delete_file,
+	  sf_create_log,
+	  g_file,
+	  google_drive_file_meta_data,
+	  google_drive_refresh_token,
+	  google_drive_folder_id,
 	  sf_instance_url,
-      sf_token
-  } = salesforceAuthenticationInfo;
+	  sf_token
+	} = salesforceAuthenticationInfo;
 
-  // We are sending the request immediately because we cannot wait untill the whole migration is completed. It will timeout the API request in Apex.
-  res.send(`Heroku service to migrate Salesforce File has been started successfully.`);
+    // We are sending the request immediately because we cannot wait untill the whole migration is completed. It will timeout the API request in Apex.
+    res.send(`Heroku service to migrate Salesforce File has been started successfully.`);
 
-  // Get salesforce response
-  const migrateSalesforceResult = migrateSalesforce(sf_file_id, google_drive_client_id, google_drive_secret_id, google_drive_refresh_token, sf_client_id, sf_client_secret, sf_username, sf_password, google_drive_bucket_name, google_drive_folder_key, google_drive_file_title, sf_file_size, 
+    // Get salesforce response
+    const migrateSalesforceResult = migrateSalesforce(sf_file_id, google_drive_client_id, google_drive_secret_id, google_drive_refresh_token, sf_client_id, sf_client_secret, sf_username, sf_password, google_drive_bucket_name, google_drive_folder_key, google_drive_file_title, sf_file_size, 
     sf_content_document_id, sf_parent_id, sf_content_document_link_id, sf_namespace, sf_delete_file, sf_create_log, g_file, google_drive_file_meta_data, google_drive_folder_id, sf_instance_url, sf_token);
   } catch(error){
     console.log(error);
