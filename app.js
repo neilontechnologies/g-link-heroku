@@ -47,7 +47,7 @@ app.use((req, res, next) => {
 app.post('/uploadsalesforcefile', async (req, res) => {
   try{
     const contentType = req.headers['content-type'];
-    const salesforceAuthenticationInfo;
+    let salesforceAuthenticationInfo;
     if(contentType == 'text/plain'){
 	  const apiKey = process.env.API_KEY;
       const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
