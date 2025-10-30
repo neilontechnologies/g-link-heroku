@@ -23,7 +23,7 @@ const XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 // Use to authenticate heroku access key
 app.use((req, res, next) => {
   const contentType = req.headers['content-type'];
-  const salesforceAuthenticationInfo;
+  let salesforceAuthenticationInfo;
   const apiKey = process.env.API_KEY;
   if(contentType == 'text/plain'){
     const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
