@@ -128,7 +128,7 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
     let getSalesforceFileResult;
     if(sfBulkJobId != null){
         // Get salesforce data information 
-        getSalesforceFileResult = await getSalesforceData(salesforceAccessToken, instanceUrl, sfBulkJobId, sfNamespace);
+        getSalesforceFileResult = await getSalesforceData(salesforceAccessToken, instanceUrl, sfBulkJobId, sfNamespace, sfCreateLog);
     } else {
         // Get salesforce file information 
         getSalesforceFileResult = await getSalesforceFile(salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog);
@@ -345,7 +345,7 @@ const getSalesforceFile = async (accessToken, instanceUrl, sfFileId, sfContentDo
 };
 
 // This method is used to fetch Salesforce data with the help of bulk api job id
-const getSalesforceData = async (accessToken, instanceUrl, sfBulkJobId, sfNamespace) => {
+const getSalesforceData = async (accessToken, instanceUrl, sfBulkJobId, sfNamespace, sfCreateLog) => {
   try {
 	// Prepare url for Salesforce data export
     const url = `${instanceUrl}/services/data/v60.0/jobs/query/${sfBulkJobId}/results`;
