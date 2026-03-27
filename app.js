@@ -589,7 +589,7 @@ const createLogs = (accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDo
   return new Promise((resolve, reject) => {
     let url;
     const xhr = new XMLHttpRequest();
-    const body = {};
+    let body = {};
 	
     // Check if this is data export job
     const isBulkJob = sfBulkJobId && sfBulkJobId.trim() !== '';
