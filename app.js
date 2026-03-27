@@ -617,7 +617,7 @@ const createLogs = (accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDo
     if(isBulkJob){
       // Bulk Job case
       body = {
-        JobId: sfJobId,
+        JobId: sfBulkJobId,
         Status: 'Failed',
         Message: failureReason
       };
