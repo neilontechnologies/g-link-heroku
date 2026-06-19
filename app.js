@@ -172,7 +172,7 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
       // Create google drive folder using google drive folder path
       let createGoogleDriveFolderResult;
       if(storage !== 'SHAREPOINT'){
-        createGoogleDriveFolderResult = await createGoogleDriveFolder(salesforceAccessToken, instanceUrl, googleDriveFolderPath, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog, sfBulkJobId));
+        createGoogleDriveFolderResult = await createGoogleDriveFolder(salesforceAccessToken, instanceUrl, googleDriveFolderPath, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog, sfBulkJobId);
       }
 
       // Check folder is created or not
