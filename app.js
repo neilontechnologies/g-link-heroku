@@ -120,9 +120,9 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
 
   // Get access token authetication with google drive
   let googleDriveAccessToken;
-  if(storage === 'SHAREPOINT'){
+  if(storage === 'SharePoint'){
     googleDriveAccessToken = googleDriveToken;
-  } else if(storage === 'GOOGLE_DRIVE'){
+  } else if(storage === 'Google Drive'){
     // Get access token authetication with google drive
     googleDriveAccessToken = await createOAuthClient(googleDriveAccessKey, googleDriveSecretKey, googleDriveRefreshToken);
 
@@ -171,12 +171,12 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
 
       // Create google drive folder using google drive folder path
       let createGoogleDriveFolderResult;
-      if(storage !== 'SHAREPOINT'){
+      if(storage !== 'SharePoint'){
         createGoogleDriveFolderResult = await createGoogleDriveFolder(salesforceAccessToken, instanceUrl, googleDriveFolderPath, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog, sfBulkJobId);
       }
 
       // Check folder is created or not
-      if(storage === 'SHAREPOINT' || (createGoogleDriveFolderResult != null && createGoogleDriveFolderResult.code == 200 && createGoogleDriveFolderResult.data != null)){
+      if(storage === 'SharePoint' || (createGoogleDriveFolderResult != null && createGoogleDriveFolderResult.code == 200 && createGoogleDriveFolderResult.data != null)){
 
         // Get google drive folder id
         let googleDriveFolderId;
@@ -186,7 +186,7 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
         }
 
         let response;
-        if(storage === 'SHAREPOINT'){
+        if(storage === 'SharePoint'){
             // Upload file into SharePoint
             response = await uploadFileToSharePoint(googleDriveAccessToken, sharepointUploadUrl, getSalesforceFileResult, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, sfNamespace, sfBulkJobId);
         } else{
@@ -217,9 +217,9 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
         const googleDriveFilePath = getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Google_Folder_Path__c'] + '/' + googleDriveFileTitle;
 
         // Check google drive folder id is available or not
-        if(storage === 'SHAREPOINT' || getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Google_Drive_Folder_Id__c'] != null){
+        if(storage === 'SharePoint' || getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Google_Drive_Folder_Id__c'] != null){
           let response;
-          if(storage === 'SHAREPOINT'){
+          if(storage === 'SharePoint'){
               // Upload file into SharePoint
               response = await uploadFileToSharePoint(googleDriveAccessToken, sharepointUploadUrl, getSalesforceFileResult, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, sfNamespace, sfBulkJobId);
           } else{
@@ -744,9 +744,9 @@ async function uploadFileToGoogleDrive(authClient, buffer, googleDriveFolderId, 
           // Check sf create log is true or false
           if(sfCreateLog){
             // Prepare error message
-            const failureReason = 'Your request to upload file in Google Drive has failed' + error;
+            const failureReason = 'Your request to upload file in Google Drive has failed. ' + error;
 
-			      // Create File Migration Logs
+		    // Create File Migration Logs
             const createFileMigrationLogResult = createLogs(accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
           }
           return;
@@ -781,7 +781,7 @@ async function uploadFileToGoogleDrive(authClient, buffer, googleDriveFolderId, 
 // This function will upload the desired file to share point folder
 async function uploadFileToSharePoint(sharePointToken, sharepointUploadInfo, buffer, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, sfNamespace, sfBulkJobId){
     try {
-        if(sharepointUploadInfo.type === 'uploadSessionUrl'){
+        if(sharepointUploadInfo.type === 'UploadSessionUrl'){
           // Upload large file using multipart upload
 		  const uploadUrl = sharepointUploadInfo.url;
           const chunkSize = 10 * 1024;
@@ -815,7 +815,7 @@ async function uploadFileToSharePoint(sharePointToken, sharepointUploadInfo, buf
             status: 200,
             data: responseUploadData
         };
-      } else if(sharepointUploadInfo.type === 'endpoint'){
+      } else if(sharepointUploadInfo.type === 'Endpoint'){
 
         // Upload small file using single part upload
         let uploadResponse = await fetch(sharepointUploadInfo.url, {
