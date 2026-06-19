@@ -144,46 +144,52 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
         getSalesforceFileResult = await getSalesforceFile(salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog);
     }
     
-    if(googleDriveFolderId != null){
-      // Prepare google drive file path
-      const googleDriveFilePath = googleDriveFolderKey + '/' + googleDriveFileTitle
-
-      // Upload file into google drive  
-      const response = await uploadFileToGoogleDrive(googleDriveAccessToken, getSalesforceFileResult, googleDriveFolderId, googleDriveFileTitle, gFile, sfNamespace, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, googleDriveFileMetadata, sfBulkJobId);
-
-      // Check response
-      if(response.status == 200){
-        if(response && response.data && response.data.id){
-          // Get google drive file id
-          const googleDriveFileId = response.data.id;
-          const googleDriveFileSize = response.data.size;
-
-          // Create g file record if file is successfully uploaded into google drive
-          const createGFilesInSalesforceResult = await createGFilesInSalesforce(salesforceAccessToken, instanceUrl, googleDriveBucketName, googleDriveFilePath, googleDriveFileSize, sfContentDocumentId, sfFileId, sfContentDocumentLinkId, sfNamespace, sfDeleteFile, sfCreateLog, gFile, googleDriveFileId, sfBulkJobId);
-        }
+	if(sfParentId != null && googleDriveFolderKey == null){
+      // Check if google drive folder id is available for parentId or not
+      const { getRecordHomeFolderResult } = await getRecordHomeFolder(salesforceAccessToken, instanceUrl, sfParentId, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog, sfBulkJobId);
+	  
+      // Check reponse
+      if(getRecordHomeFolderResult.sObjects != null && getRecordHomeFolderResult.sObjects.length > 0){
+		// Set google folder path
+		googleDriveFolderKey = getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Google_Folder_Path__c'];
+		
+		// Set googlde folder id
+	    googleDriveFolderId = getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Google_Drive_Folder_Id__c'];
+		
+		// Set bucket name 
+		googleDriveBucketName = getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Bucket_Name__c'];
       }
-    } else if (googleDriveFolderKey != null) {
+    }
+	
+	if(googleDriveFolderKey != null){
       // Prepare google drive folder path
       const googleDriveFolderPath = googleDriveBucketName + '/' + googleDriveFolderKey;
 
       // Create google drive file path
       const googleDriveFilePath = googleDriveFolderKey + '/' + googleDriveFileTitle
 
-      // Create google drive folder using google drive folder path
-      let createGoogleDriveFolderResult;
-      if(storage !== 'SharePoint'){
-        createGoogleDriveFolderResult = await createGoogleDriveFolder(salesforceAccessToken, instanceUrl, googleDriveFolderPath, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog, sfBulkJobId);
-      }
+      // Check if storage is Google Drive and google folder id not available
+      if(storage === 'Google Drive' && googleDriveFolderId == null){
+		// Create google drive folder using google drive folder path  
+        let createGoogleDriveFolderResult = await createGoogleDriveFolder(salesforceAccessToken, instanceUrl, googleDriveFolderPath, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog, sfBulkJobId);
+		
+		//  Check response
+		if(createGoogleDriveFolderResult != null && createGoogleDriveFolderResult.code == 200 && createGoogleDriveFolderResult.data != null){
+            // Get google drive folder id
+			googleDriveFolderId = createGoogleDriveFolderResult.data.split('/').pop();
+        } else{
+          // Prepare failure rason with error message of API
+          const failureReason = 'Your request to create Google Drive Folders failed. ERROR: ' + createGoogleDriveFolderResult.message;
+		  
+          if(sfCreateLog){
+            // Create File Migration Logs 
+            const createFileMigrationLogResult = createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
+          }
+        }
+	  }
 
       // Check folder is created or not
-      if(storage === 'SharePoint' || (createGoogleDriveFolderResult != null && createGoogleDriveFolderResult.code == 200 && createGoogleDriveFolderResult.data != null)){
-
-        // Get google drive folder id
-        let googleDriveFolderId;
-
-        if(createGoogleDriveFolderResult && createGoogleDriveFolderResult.data){
-            googleDriveFolderId = createGoogleDriveFolderResult.data.split('/').pop();
-        }
+      if(storage === 'SharePoint' || googleDriveFolderId != null){
 
         let response;
         if(storage === 'SharePoint'){
@@ -201,91 +207,13 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
             const googleDriveFileId = response.data.id;
             const googleDriveFileSize = response.data.size;
 
-            // Create g file record if file is successfully uploaded into google drive
+            // Create G-file record if file is successfully uploaded into google drive
             const createGFilesInSalesforceResult = await createGFilesInSalesforce(salesforceAccessToken, instanceUrl, googleDriveBucketName, googleDriveFilePath, googleDriveFileSize, sfContentDocumentId, sfFileId, sfContentDocumentLinkId, sfNamespace, sfDeleteFile, sfCreateLog, gFile, googleDriveFileId, sfBulkJobId);
           }
         }
       }
-    } else{
-      // Check if google drive folder id is available for parentId or not
-      const { getRecordHomeFolderResult } = await getRecordHomeFolder(salesforceAccessToken, instanceUrl, sfParentId, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog, sfBulkJobId);
-
-      // Check reponse
-      if(getRecordHomeFolderResult.sObjects != null && getRecordHomeFolderResult.sObjects.length > 0){
-
-        // Create googlde drive file path
-        const googleDriveFilePath = getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Google_Folder_Path__c'] + '/' + googleDriveFileTitle;
-
-        // Check google drive folder id is available or not
-        if(storage === 'SharePoint' || getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Google_Drive_Folder_Id__c'] != null){
-          let response;
-          if(storage === 'SharePoint'){
-              // Upload file into SharePoint
-              response = await uploadFileToSharePoint(googleDriveAccessToken, sharepointUploadUrl, getSalesforceFileResult, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, sfNamespace, sfBulkJobId);
-          } else{
-              // Upload file into google drive 
-              response = await uploadFileToGoogleDrive(googleDriveAccessToken, getSalesforceFileResult, getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Google_Drive_Folder_Id__c'], googleDriveFileTitle, gFile, sfNamespace, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, googleDriveFileMetadata, sfBulkJobId);
-          }
-          
-          // Check response
-          if(response.status == 200){
-            if(response && response.data && response.data.id){
-              // Get google drive file id
-              const googleDriveFileId = response.data.id;
-              const googleDriveFileSize = response.data.size;
-
-              // Create g file record if file is successfully uploaded into google drive
-              const createGFilesInSalesforceResult = await createGFilesInSalesforce(salesforceAccessToken, instanceUrl, googleDriveBucketName, googleDriveFilePath, googleDriveFileSize, sfContentDocumentId, sfFileId, sfContentDocumentLinkId, sfNamespace, sfDeleteFile, sfCreateLog, gFile, googleDriveFileId, sfBulkJobId);
-            }
-          }
-        } else {
-          // Create google drive folder path
-          const googleDriveFolderPath = getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Bucket_Name__c'] + '/'+ getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Google_Folder_Path__c'];
-
-          // Create google drive folder busing google drive folder path
-          const {createGoogleDriveFolderResult} = await createGoogleDriveFolder(salesforceAccessToken, instanceUrl, googleDriveFolderPath, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog, sfBulkJobId);
-
-          //  Check response
-          if(createGoogleDriveFolderResult != null && createGoogleDriveFolderResult.code == 200 && createGoogleDriveFolderResult.data != null){
-
-            // Get google drive folder id
-            const googleDriveFolderId = createGoogleDriveFolderResult.data.split('/').pop();
-
-            // Upload file in google drive
-            const response = await uploadFileToGoogleDrive(googleDriveAccessToken, getSalesforceFileResult, googleDriveFolderId, googleDriveFileTitle, gFile, sfNamespace, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, googleDriveFileMetadata, sfBulkJobId);
-
-            // Check response
-			      if(response.status == 200){
-			        if(response && response.data && response.data.id){
-                // Get google drive file id
-                const googleDriveFileId = response.data.id;
-                const googleDriveFileSize = response.data.size;
-
-                // Create g file record if file is successfully uploaded into google drive
-                const createGFilesInSalesforceResult = await createGFilesInSalesforce(salesforceAccessToken, instanceUrl, googleDriveBucketName, googleDriveFilePath, googleDriveFileSize, sfContentDocumentId, sfFileId, sfContentDocumentLinkId, sfNamespace, sfDeleteFile, sfCreateLog, gFile, googleDriveFileId, sfBulkJobId);
-              }
-			      }
-          } else {
-            // Prepare failure rason with error message of API
-            const failureReason = 'Your request to create Google Drive Folders failed. ERROR: ' + createGoogleDriveFolderResult.message;
-            
-            if(sfCreateLog){
-              // Create File Migration Logs 
-              const createFileMigrationLogResult = createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
-            }
-          }
-        }
-      } else{
-          // Prepare failure rason with error message of API
-          const failureReason = 'Your request to create G-Folder for the record failed. ERROR: ' + getRecordHomeFolderResult.message ;
-
-        if(sfCreateLog){
-            // Create File Migration Logs
-            const createFileMigrationLogResult = await createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
-        }
-      }
-    } 
-  } else {
+    }
+  } else{
     if(sfCreateLog){
       // Prepare failure rason with error message of API
       let failureReason = '';
