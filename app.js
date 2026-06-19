@@ -46,7 +46,7 @@ app.post('/uploadsalesforcefile', async (req, res) => {
     const contentType = req.headers['content-type'];
     let salesforceAuthenticationInfo;
     if(contentType == 'text/plain'){
-	    const apiKey = process.env.API_KEY;
+	  const apiKey = process.env.API_KEY;
       const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
       salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
     } else{
@@ -143,8 +143,8 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
         // Get salesforce file information 
         getSalesforceFileResult = await getSalesforceFile(salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog);
     }
-    
-	if(sfParentId != null && googleDriveFolderKey == null){
+    console.log(sfParentId);
+	if(sfParentId != null){
       // Check if google drive folder id is available for parentId or not
       const { getRecordHomeFolderResult } = await getRecordHomeFolder(salesforceAccessToken, instanceUrl, sfParentId, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog, sfBulkJobId);
 	  
@@ -158,9 +158,18 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
 		
 		// Set bucket name 
 		googleDriveBucketName = getRecordHomeFolderResult.sObjects[0][sfNamespace + 'Bucket_Name__c'];
+      } else{
+          // Prepare failure rason with error message of API
+          const failureReason = 'Your request to create G-Folder for the record failed. ERROR: ' + getRecordHomeFolderResult.message ;
+
+        if(sfCreateLog){
+            // Create File Migration Logs
+            const createFileMigrationLogResult = await createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
+        }
       }
     }
-	
+	console.log(storage);
+	console.log('googleDriveFolderKey-->' + googleDriveFolderKey);
 	if(googleDriveFolderKey != null){
       // Prepare google drive folder path
       const googleDriveFolderPath = googleDriveBucketName + '/' + googleDriveFolderKey;
@@ -187,16 +196,17 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
           }
         }
 	  }
-
+	  
+	  console.log(googleDriveFolderId);
       // Check folder is created or not
       if(storage === 'SharePoint' || googleDriveFolderId != null){
-
+		console.log('Upload');
         let response;
         if(storage === 'SharePoint'){
             // Upload file into SharePoint
-            response = await uploadFileToSharePoint(googleDriveAccessToken, sharepointUploadUrl, getSalesforceFileResult, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, sfNamespace, sfBulkJobId);
+            response = await uploadFileToSharePoint(googleDriveAccessToken, sharepointUploadUrl, gFile, getSalesforceFileResult, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, sfNamespace, sfBulkJobId);
         } else{
-            // Upload file into google drive 
+            // Upload file into google drive , 
             response = await uploadFileToGoogleDrive(googleDriveAccessToken, getSalesforceFileResult, googleDriveFolderId, googleDriveFileTitle, gFile, sfNamespace, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, googleDriveFileMetadata, sfBulkJobId);
         }
         
@@ -680,7 +690,7 @@ async function uploadFileToGoogleDrive(authClient, buffer, googleDriveFolderId, 
           return;
         }
 
-        if (gFile[sfNamespace + 'Public_On_Google__c']) {
+        if(gFile[sfNamespace + 'Public_On_Google__c']){
           try {
             await drive.permissions.create({
               fileId: file.data.id,
@@ -694,7 +704,7 @@ async function uploadFileToGoogleDrive(authClient, buffer, googleDriveFolderId, 
 
             // Check sf create log is true or false
             if (sfCreateLog) {
-			        // Create File Migration Logs
+			  // Create File Migration Logs
               const createFileMigrationLogResult = createLogs(accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
             }
             return;
@@ -707,63 +717,73 @@ async function uploadFileToGoogleDrive(authClient, buffer, googleDriveFolderId, 
 }
 
 // This function will upload the desired file to share point folder
-async function uploadFileToSharePoint(sharePointToken, sharepointUploadInfo, buffer, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, sfNamespace, sfBulkJobId){
+async function uploadFileToSharePoint(sharePointToken, sharepointUploadInfo, gFile, buffer, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, sfNamespace, sfBulkJobId){
     try {
-        if(sharepointUploadInfo.type === 'UploadSessionUrl'){
-          // Upload large file using multipart upload
-		  const uploadUrl = sharepointUploadInfo.url;
-          const chunkSize = 10 * 1024;
+	  console.log('Endpoint-->' + sharepointUploadInfo.url);
+      if(sharepointUploadInfo.type === 'UploadSessionUrl'){
+        // Upload large file using multipart upload
+		const uploadUrl = sharepointUploadInfo.url;
+        const chunkSize = 10 * 1024;
 
-          let start = 0;
-          let uploadResponse;
+        let start = 0;
+        let uploadResponse;
 
-          while(start < buffer.length){
-            const end = Math.min(start + chunkSize, buffer.length);
-            const chunk = buffer.slice(start, end);
+        while(start < buffer.length){
+          const end = Math.min(start + chunkSize, buffer.length);
+          const chunk = buffer.slice(start, end);
 
-            uploadResponse = await fetch(uploadUrl, {
-              method: 'PUT',
-              headers: {
-                'Content-Length': chunk.length,
-                'Content-Range':
-                  `bytes ${start}-${end - 1}/${buffer.length}`
-              },
-              body: chunk
-            });
+          uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Length': chunk.length,
+              'Content-Range':
+                `bytes ${start}-${end - 1}/${buffer.length}`
+            },
+            body: chunk
+          });
 
-            if (!uploadResponse.ok) {
-              let errorData = await uploadResponse.text();
-              throw new Error(errorData);
-            }
-            start = end;
+          if(!uploadResponse.ok){
+            let errorData = await uploadResponse.text();
+            throw new Error(errorData);
           }
+          start = end;
+        }
 
         let responseUploadData = await uploadResponse.json();
         return {
-            status: 200,
-            data: responseUploadData
+          status: 200,
+          data: responseUploadData
         };
       } else if(sharepointUploadInfo.type === 'Endpoint'){
+		console.log('sharePointToken-->' + sharePointToken);
+		console.log('Content_Type__c-->' + gFile[sfNamespace + 'Content_Type__c']);
 
         // Upload small file using single part upload
         let uploadResponse = await fetch(sharepointUploadInfo.url, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${sharePointToken}`,
-            'Content-Type': 'application/octet-stream'
+            'Content-Type': gFile[sfNamespace + 'Content_Type__c']
           },
           body: buffer
         });
-
+		
+		if(!uploadResponse.ok){
+          let errorData = await uploadResponse.text();
+		  console.log(errorData);
+          throw new Error(errorData);
+        }
+		  
         let responseData = await uploadResponse.json();
         return {
           status: 200,
           data: responseData
         };
       }
-    } catch (error){
-        if (sfCreateLog) {
-            await createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, error.message, sfNamespace);
+    } catch(error){
+        if(sfCreateLog){
+          // Create File Migration Logs
+          const createFileMigrationLogResult =  createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, error.message, sfNamespace);
         }
     }
 }
