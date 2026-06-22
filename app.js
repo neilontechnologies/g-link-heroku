@@ -719,7 +719,7 @@ async function uploadFileToSharePoint(sharePointToken, sharepointUploadInfo, gFi
       if(sharepointUploadInfo.type === 'UploadSessionUrl'){
         // Upload large file using multipart upload
 		const uploadUrl = sharepointUploadInfo.url;
-        const chunkSize = 10 * 1024;
+        const chunkSize = 50 * 1024 * 1024;
 
         let start = 0;
         let uploadResponse;
@@ -832,7 +832,7 @@ app.get('/', async (req, res) => {
 	const sfInstanceUrl = '{SALESFORCE_INSTANCE_URL}';
     const sfToken = '{SALESFORCE_TOKEN}';
 	const sfBulkJobId = '{SALESFORCE_BULK_JOB_ID}';
-    const googleDriveToken = "{GOOGLE_DRIVE_TOKEN}";
+    const googleDriveToken = '{GOOGLE_DRIVE_TOKEN}';
     const storage = '{STORAGE}';
     const sharePointUploadInfo = '{SHAREPOINT_UPLOAD_INFO}';
 
