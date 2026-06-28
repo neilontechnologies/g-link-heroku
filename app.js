@@ -179,7 +179,7 @@ const migrateSalesforce = async (sfFileId, googleDriveAccessKey, googleDriveSecr
 		// Check if storage is Google Drive and google folder id not available
 		if(storage === 'Google Drive' && googleDriveFolderId == null){
 		  // Create google drive folder using google drive folder path  
-		  let createGoogleDriveFolderResult = await createGoogleDriveFolder(salesforceAccessToken, instanceUrl, googleDriveFolderPath, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog, sfBulkJobId);
+		  const {createGoogleDriveFolderResult} = = await createGoogleDriveFolder(salesforceAccessToken, instanceUrl, googleDriveFolderPath, sfFileId, sfContentDocumentLinkId, sfNamespace, sfCreateLog, sfBulkJobId);
 			
 		  //  Check response
 		  if(createGoogleDriveFolderResult != null && createGoogleDriveFolderResult.code == 200 && createGoogleDriveFolderResult.data != null){
@@ -446,7 +446,7 @@ const createGoogleDriveFolder = async (accessToken, instanceUrl, googleDriveFold
           const failureReason = 'Your request to create Google Drive Folder failed. ERROR: ' + response[0].message;
 
           if(sfCreateLog){
-			      // Create File Migration Logs
+			// Create File Migration Logs
             const createFileMigrationLogResult = createLogs(accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
           }
         }
