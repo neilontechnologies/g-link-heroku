@@ -46,7 +46,7 @@ app.post('/uploadsalesforcefile', async (req, res) => {
     const contentType = req.headers['content-type'];
     let salesforceAuthenticationInfo;
     if(contentType == 'text/plain'){
-	  const apiKey = process.env.API_KEY;
+	    const apiKey = process.env.API_KEY;
       const decryptedPayload = decryptAES256(req.body, apiKey.substring(0, 32));
       salesforceAuthenticationInfo = JSON.parse(decryptedPayload);
     } else{
@@ -76,7 +76,7 @@ app.post('/uploadsalesforcefile', async (req, res) => {
 	  google_drive_file_meta_data,
 	  google_drive_refresh_token,
 	  google_drive_folder_id,
-	  google_drive_file_id,
+    google_drive_file_id,
 	  sf_instance_url,
 	  sf_token,
     sf_bulk_job_id,
@@ -596,10 +596,10 @@ const createLogs = (accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDo
 
     // Handle the response
     xhr.onload = function() {
-      if (xhr.readyState === 4) {  
+      if(xhr.readyState === 4){  
         const response = JSON.parse(xhr.responseText);
         console.log(response);
-        if (xhr.status === 200) {
+        if(xhr.status === 200){
           resolve(response);
         } else {
           return;
@@ -622,6 +622,37 @@ async function createOAuthClient(clientId, clientSecret, refreshToken) {
   const oauth2Client = new OAuth2(clientId, clientSecret);
   oauth2Client.setCredentials({ refresh_token: refreshToken });
   return oauth2Client;
+}
+
+// Handle Google Drive upload response and log failures if enabled.
+async function handleUploadResponse(error, file,  drive, gFile, resolve, sfCreateLog, accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, sfNamespace) {
+   if (error) {
+    if (sfCreateLog) {
+      const failureReason = 'Your request to upload file in Google Drive has failed. ' + error;
+      createLogs(accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
+    }
+    return false;
+  }
+
+  // Make the file public if configured
+  if(gFile[sfNamespace + 'Public_On_Google__c']){
+    try {
+      await drive.permissions.create({
+        fileId: file.data.id,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone'
+        }
+      });
+    } catch (permissionError) {
+      if(sfCreateLog){
+        const failureReason = 'Your request to make file public on Google Drive failed. ERROR: ' + permissionError;
+        createLogs(accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
+      }
+      return false;
+    }
+  }
+  return true;
 }
 
 // This function will upload the desired file to google drive folder
@@ -670,233 +701,178 @@ async function uploadFileToGoogleDrive(authClient, buffer, googleDriveFolderId, 
 
     // Method to upload file in google drive
     let response;
-     if(googleDriveFileId){
-        response = await drive.files.update(
-          {
-            fileId: googleDriveFileId,
-            resource: {
-              name: googleDriveFileTitle,
-              properties: fileMetaTags
-            },
-            media,
-            fields: 'id,size'
+    if(googleDriveFileId){
+      response = await drive.files.update(
+        {
+          fileId: googleDriveFileId,
+          resource: {
+            name: googleDriveFileTitle,
+            properties: fileMetaTags
           },
-          async (error, file) => {
-            if(error){
-              // Check sf create log is true or false
-              if(sfCreateLog){
-                // Prepare error message
-                const failureReason = 'Your request to upload file in Google Drive has failed. ' + error;
+          media,
+          fields: 'id,size'
+        },
+        async (error, file) => {
+          const success = await handleUploadResponse(error, file, drive, gFile, resolve, sfCreateLog, accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, sfNamespace);
 
-                // Create File Migration Logs
-                const createFileMigrationLogResult = createLogs(accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
-              }
-              return;
-            }
-
-            if(gFile[sfNamespace + 'Public_On_Google__c']){
-              try {
-                await drive.permissions.create({
-                  fileId: file.data.id,
-                  requestBody: {
-                    role: 'reader',
-                    type: 'anyone',
-                  },
-                });
-              } catch (permissionError) {
-                const failureReason = 'Your request to make file public on Google Drive failed. ERROR: ' + permissionError;
-
-                // Check sf create log is true or false
-                if (sfCreateLog) {
-                // Create File Migration Logs
-                  const createFileMigrationLogResult = createLogs(accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
-                }
-                return;
-              }
-            }
-            resolve(file);
-          });
-
-      } else{
-        drive.files.create(
-          {
-            fileId: googleDriveFileId,
-            resource: fileMetaData,
-            media,
-            fields: 'id, size',
-          },
-          
-          async (error, file) => {
-            if(error){
-              // Check sf create log is true or false
-              if(sfCreateLog){
-                // Prepare error message
-                const failureReason = 'Your request to upload file in Google Drive has failed. ' + error;
-
-                // Create File Migration Logs
-                const createFileMigrationLogResult = createLogs(accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
-              }
-              return;
-            }
-
-            if(gFile[sfNamespace + 'Public_On_Google__c']){
-              try {
-                await drive.permissions.create({
-                  fileId: file.data.id,
-                  requestBody: {
-                    role: 'reader',
-                    type: 'anyone',
-                  },
-                });
-              } catch (permissionError) {
-                const failureReason = 'Your request to make file public on Google Drive failed. ERROR: ' + permissionError;
-
-                // Check sf create log is true or false
-                if (sfCreateLog) {
-                // Create File Migration Logs
-                  const createFileMigrationLogResult = createLogs(accessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
-                }
-                return;
-              }
-            }
-            resolve(file);
+          if(!success){
+            return;
           }
-        );
-      }
+          resolve(file);
+        });
+
+    } else{
+      drive.files.create(
+        {
+          resource: fileMetaData,
+          media,
+          fields: 'id, size',
+        },
+        
+        async (error, file) => {
+          const success = await handleUploadResponse(error, file,  drive, gFile, resolve, sfCreateLog, accessToken,instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, sfNamespace);
+
+          if(!success){
+            return;
+          }
+          resolve(file);
+        }
+      );
+    }
   });
 }
 
 // This function will upload the desired file to share point folder
 async function uploadFileToSharePoint(sharePointToken, sharepointUploadInfo, gFile, buffer, googleDriveFileMetadata, salesforceAccessToken, instanceUrl, sfFileId, sfContentDocumentLinkId, sfCreateLog, sfNamespace, sfBulkJobId){
-    let fileMetaTags = {};
-    let responseUploadData;
-	
-    if(googleDriveFileMetadata){
-      Object.entries(googleDriveFileMetadata).forEach(([filedAPIName, value]) => {
-        if(googleDriveFileMetadata[filedAPIName] !== undefined && googleDriveFileMetadata[filedAPIName] !== null){
-          fileMetaTags[filedAPIName] = googleDriveFileMetadata[filedAPIName].toString();
-        } else{
-          fileMetaTags[filedAPIName] = '';
-        }
-      });
-    } 
+  let fileMetaTags = {};
+  let responseUploadData;
 
-	try{
-      if(sharepointUploadInfo.type === 'UploadSessionUrl'){
-        // Upload large file using multipart upload
-		    const uploadUrl = sharepointUploadInfo.url;
-        const chunkSize = 50 * 1024 * 1024;
+  if(googleDriveFileMetadata){
+    Object.entries(googleDriveFileMetadata).forEach(([filedAPIName, value]) => {
+      if(googleDriveFileMetadata[filedAPIName] !== undefined && googleDriveFileMetadata[filedAPIName] !== null){
+        fileMetaTags[filedAPIName] = googleDriveFileMetadata[filedAPIName].toString();
+      } else{
+        fileMetaTags[filedAPIName] = '';
+      }
+    });
+  } 
 
-        let start = 0;
-        let uploadResponse;
+try{
+    if(sharepointUploadInfo.type === 'UploadSessionUrl'){
+      // Upload large file using multipart upload
+      const uploadUrl = sharepointUploadInfo.url;
+      const chunkSize = 50 * 1024 * 1024;
 
-        while(start < buffer.length){
-          const end = Math.min(start + chunkSize, buffer.length);
-          const chunk = buffer.slice(start, end);
+      let start = 0;
+      let uploadResponse;
 
-          uploadResponse = await fetch(uploadUrl, {
-            method: 'PUT',
-            headers: {
-              'Content-Length': chunk.length,
-              'Content-Range':
-              `bytes ${start}-${end - 1}/${buffer.length}`
-            },
-            body: chunk
-          });
+      while(start < buffer.length){
+        const end = Math.min(start + chunkSize, buffer.length);
+        const chunk = buffer.slice(start, end);
 
-          if(!uploadResponse.ok){
-            let errorData = await uploadResponse.text();
-            throw new Error(errorData);
-          }
-          start = end;
-        }
-
-        responseUploadData = await uploadResponse.json();
-
-      } else if(sharepointUploadInfo.type === 'Endpoint'){
-        // Upload small file using single part upload
-        let uploadResponse = await fetch(sharepointUploadInfo.url, {
+        uploadResponse = await fetch(uploadUrl, {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer ${sharePointToken}`,
-            'Content-Type': gFile[sfNamespace + 'Content_Type__c']
+            'Content-Length': chunk.length,
+            'Content-Range':
+            `bytes ${start}-${end - 1}/${buffer.length}`
           },
-          body: buffer
+          body: chunk
         });
 
-		    if(!uploadResponse.ok){
+        if(!uploadResponse.ok){
           let errorData = await uploadResponse.text();
           throw new Error(errorData);
         }
-        responseUploadData = await uploadResponse.json();
+        start = end;
       }
 
-      if(responseUploadData && responseUploadData.id){
-        if(Object.keys(fileMetaTags).length > 0 ){
-          try{
-              const metadataResponse = await fetch(
-                `https://graph.microsoft.com/v1.0/drives/${responseUploadData.parentReference.driveId}/items/${responseUploadData.id}/listItem/fields`,
-                {
-                  method: 'PATCH',
-                  headers: {
-                    'Authorization': `Bearer ${sharePointToken}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify(fileMetaTags)
-                }
-              );
+      responseUploadData = await uploadResponse.json();
 
-              if(!metadataResponse.ok){
-                const metadataError = await metadataResponse.text();
-                throw new Error(metadataError);
-              }
-          } catch(metadataError){
-            if(sfCreateLog){
-              const failureReason = 'Your request to set metadata failed. ERROR: ' + metadataError;
-              await createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
-            }
-          }
-        }
+    } else if(sharepointUploadInfo.type === 'Endpoint'){
+      // Upload small file using single part upload
+      let uploadResponse = await fetch(sharepointUploadInfo.url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${sharePointToken}`,
+          'Content-Type': gFile[sfNamespace + 'Content_Type__c']
+        },
+        body: buffer
+      });
 
-        // Make file public
-        if(gFile[sfNamespace +'Public_On_Google__c']){
-          try{
-            const sharingResponse = await fetch(
-            `https://graph.microsoft.com/v1.0/drives/${responseUploadData.parentReference.driveId}/items/${responseUploadData.id}/createLink`,
+      if(!uploadResponse.ok){
+        let errorData = await uploadResponse.text();
+        throw new Error(errorData);
+      }
+      responseUploadData = await uploadResponse.json();
+    }
+
+    if(responseUploadData && responseUploadData.id){
+      if(Object.keys(fileMetaTags).length > 0 ){
+        try{
+          const metadataResponse = await fetch(
+            `https://graph.microsoft.com/v1.0/drives/${responseUploadData.parentReference.driveId}/items/${responseUploadData.id}/listItem/fields`,
             {
-              method: 'POST',
+              method: 'PATCH',
               headers: {
                 'Authorization': `Bearer ${sharePointToken}`,
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify({
-                type: 'view',
-                scope: 'anonymous'
-              })
-            });
-            
-            if(!sharingResponse.ok){
-              const sharingError = await sharingResponse.text();
-              throw new Error(sharingError);
+              body: JSON.stringify(fileMetaTags)
             }
-          } catch(permissionError){
-              if(sfCreateLog){
-                const failureReason = 'Your request to create public SharePoint link failed. ERROR: ' + permissionError;
-                await createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
-              }
+          );
+
+          if(!metadataResponse.ok){
+            const metadataError = await metadataResponse.text();
+            throw new Error(metadataError);
+          }
+        } catch(metadataError){
+          if(sfCreateLog){
+            const failureReason = 'Your request to set metadata failed. ERROR: ' + metadataError;
+            await createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
           }
         }
       }
-      return {
-        status: 200,
-        data: responseUploadData
-      };
-    } catch(error){
-        if(sfCreateLog){
-          // Create File Migration Logs
-          const createFileMigrationLogResult =  createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, error.message, sfNamespace);
+
+      // Make file public
+      if(gFile[sfNamespace +'Public_On_Google__c']){
+        try{
+          const sharingResponse = await fetch(
+          `https://graph.microsoft.com/v1.0/drives/${responseUploadData.parentReference.driveId}/items/${responseUploadData.id}/createLink`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${sharePointToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              type: 'view',
+              scope: 'anonymous'
+            })
+          });
+          
+          if(!sharingResponse.ok){
+            const sharingError = await sharingResponse.text();
+            throw new Error(sharingError);
+          }
+        } catch(permissionError){
+          if(sfCreateLog){
+            const failureReason = 'Your request to create public SharePoint link failed. ERROR: ' + permissionError;
+            await createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, failureReason, sfNamespace);
+          }
         }
+      }
     }
+    return {
+      status: 200,
+      data: responseUploadData
+    };
+  } catch(error){
+      if(sfCreateLog){
+        // Create File Migration Logs
+        const createFileMigrationLogResult =  createLogs(salesforceAccessToken, instanceUrl, sfBulkJobId, sfFileId, sfContentDocumentLinkId, error.message, sfNamespace);
+      }
+  }
 }
 
 // This function will be used to decrypt the payload
@@ -951,6 +927,7 @@ app.get('/', async (req, res) => {
     const googleDriveToken = '{GOOGLE_DRIVE_TOKEN}';
     const storage = '{STORAGE}';
     const sharePointUploadInfo = '{SHAREPOINT_UPLOAD_INFO}';
+	
 
     // We are sending the request immediately because we cannot wait untill the whole migration is completed. It will timeout the API request in Apex.
     res.send(`Heroku service to migrate Salesforce File has been started successfully.`);
